@@ -161,7 +161,7 @@ if __name__ == "__main__":
 
     initialize_distributed(args)
     # build model
-    model, args = AutoModel.from_pretrained(args, 'glm-10b-en')
+    model, args = AutoModel.from_pretrained(args, 'glm-large-en-blank')
     model.add_mixin('auto-regressive', CachedAutoregressiveMixin())
 
     with torch.no_grad():
