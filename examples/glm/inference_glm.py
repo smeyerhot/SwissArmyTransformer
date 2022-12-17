@@ -139,7 +139,7 @@ def main(model, args):
         else:
             prefix = raw_text.replace('/', '')[:20]
             full_path = timed_name(prefix, '.txt', args.output_path)
-            print(txts[0]) # print the first.
+            print(txts) # print the first.
         with open(full_path, 'w', encoding='utf-8') as fout:
             for txt in txts:
                 fout.write(txt + '\n')
