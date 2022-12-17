@@ -26,7 +26,6 @@ python -m torch.distributed.launch --nproc_per_node=$MPSIZE --master_port $MASTE
        --temperature $TEMP \
        --top_k $TOPK \
        --output-path samples_glm \
-       --batch-size 2 \
+       --batch-size 3 \
        --out-seq-length 200 \
-       --mode inference \
        --sampling-strategy BeamSearchStrategy
