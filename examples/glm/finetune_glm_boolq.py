@@ -83,9 +83,7 @@ def forward_step(data_iterator, model, args, timers):
     )
     acc = ((pred > 0.).long() == labels).sum() / labels.numel()
     return loss, {'acc': acc}
-
-
-from SwissArmyTransformer.data_utils import load_hf_dataset
+    
 def create_dataset_function(path, args):
     tokenizer = get_tokenizer()
     def process_fn(row):
