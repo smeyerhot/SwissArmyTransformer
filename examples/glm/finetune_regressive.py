@@ -1,12 +1,6 @@
-# -*- encoding: utf-8 -*-
-'''
-@File    :   finetune_glm_sst2.py
-@Time    :   2021/12/12 20:53:28
-@Author  :   Ming Ding 
-@Contact :   dm18@mails.tsinghua.edu.cn
-'''
 
 # here put the import lib
+from SwissArmyTransformer.data_utils import load_hf_dataset
 import os
 import sys
 import math
@@ -23,12 +17,13 @@ from SwissArmyTransformer.training.deepspeed_training import training_main
 from SwissArmyTransformer.data_utils import TSVDataset
 from SwissArmyTransformer.model import GLMModel
 from SwissArmyTransformer.model.transformer import standard_attention
-from SwissArmyTransformer.model.mixins import MLPHeadMixin, PrefixTuningMixin
+from SwissArmyTransformer.model.mixins import MLPHeadMixin, PrefixTuningMixin, CachedAutoregressiveMixin
 
-class ClassificationModel(GLMModel):
+class TextGenerationModel(GLMModel):
     def __init__(self, args, transformer=None, parallel_output=True):
         super().__init__(args, transformer=transformer, parallel_output=parallel_output)
         self.add_mixin('classification_head', MLPHeadMixin(args.hidden_size, 2048, 1))
+        self.add_mixin('auto-regressive', CachedAutoregressiveMixin())
         self.add_mixin('prefix-tuning', PrefixTuningMixin(args.num_layers, args.hidden_size // args.num_attention_heads, args.num_attention_heads, args.prefix_len))
     def disable_untrainable_params(self):
         self.transformer.word_embeddings.requires_grad_(False)
@@ -84,17 +79,37 @@ def forward_step(data_iterator, model, args, timers):
     acc = ((pred > 0.).long() == labels).sum() / labels.numel()
     return loss, {'acc': acc}
 
+
+# def create_dataset_function(path, args):
+#     tokenizer = get_tokenizer()
+#     def process_fn(row):
+#         sentence, label = tokenizer._encode(row[0]), int(row[1])
+#         sentence = [tokenizer.get_command('ENC').Id] + sentence + [tokenizer.get_command('eos').Id]
+#         if len(sentence) >= args.sample_length:
+#             sentence = sentence[:args.sample_length]
+#         else:
+#             sentence.extend([-1] * (args.sample_length-len(sentence)))
+#         return {'sentence': np.array(sentence, dtype=np.int64), 'label': label}
+#     return TSVDataset(path, process_fn, with_heads=True)
+
+
 def create_dataset_function(path, args):
     tokenizer = get_tokenizer()
+
     def process_fn(row):
-        sentence, label = tokenizer._encode(row[0]), int(row[1])
-        sentence = [tokenizer.get_command('ENC').Id] + sentence + [tokenizer.get_command('eos').Id]
-        if len(sentence) >= args.sample_length:
-            sentence = sentence[:args.sample_length]
+        sentence1, sentence2, label = tokenizer._encode(
+            row['passage']), tokenizer._encode(row['question']), int(row['label'])
+        sentence1 = sentence1 + [tokenizer.get_command('eos').Id]
+        sentence2 = [tokenizer.get_command(
+            'ENC').Id] + sentence2 + [tokenizer.get_command('eos').Id]
+        if len(sentence1) + len(sentence2) >= args.sample_length:
+            sentence = sentence2 + \
+                sentence1[:args.sample_length - len(sentence2)]
         else:
+            sentence = sentence2 + sentence1
             sentence.extend([-1] * (args.sample_length-len(sentence)))
         return {'sentence': np.array(sentence, dtype=np.int64), 'label': label}
-    return TSVDataset(path, process_fn, with_heads=True)
+    return load_hf_dataset(path, process_fn, columns= ["sentence", "label"], cache_dir='/dataset/fd5061f6/SwissArmyTransformerDatasets', offline=True)
 
 if __name__ == '__main__':    
     py_parser = argparse.ArgumentParser(add_help=False)
@@ -107,4 +122,4 @@ if __name__ == '__main__':
     args = argparse.Namespace(**vars(args), **vars(known))
     # from cogdata.utils.ice_tokenizer import get_tokenizer as get_ice
     # tokenizer = get_tokenizer(args=args, outer_tokenizer=get_ice())
-    training_main(args, model_cls=ClassificationModel, forward_step_function=forward_step, create_dataset_function=create_dataset_function)
+    training_main(args, model_cls=TextGenerationModel, forward_step_function=forward_step, create_dataset_function=create_dataset_function)
