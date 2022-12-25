@@ -15,33 +15,28 @@ import math
 import random
 
 from SwissArmyTransformer.data_utils.datasets import TSVDataset
-from SwissArmyTransformer.model.cached_autoregressive_model import CachedAutoregressiveMixin
 import torch
 import argparse
 import numpy as np
 
 from SwissArmyTransformer import mpu, get_args, get_tokenizer
-from SwissArmyTransformer.model.base_model import AutoModel, BaseModel, BaseMixin, non_conflict
+from SwissArmyTransformer.model.base_model import BaseModel, BaseMixin, non_conflict
 from SwissArmyTransformer.training.deepspeed_training import training_main
 from SwissArmyTransformer.data_utils import TSVDataset
 from SwissArmyTransformer.model import GLMModel
 from SwissArmyTransformer.model.transformer import standard_attention
 from SwissArmyTransformer.model.mixins import MLPHeadMixin, PrefixTuningMixin
 
-class GenerationModel(GLMModel):
+class ClassificationModel(GLMModel):
     def __init__(self, args, transformer=None, parallel_output=True):
         super().__init__(args, transformer=transformer, parallel_output=parallel_output)
-        self.add_mixin('classification_head',
-                       MLPHeadMixin(args.hidden_size, 2048, 1))
-        self.add_mixin('prefix-tuning', PrefixTuningMixin(args.num_layers, args.hidden_size //
-                       args.num_attention_heads, args.num_attention_heads, args.prefix_len))
-
+        self.add_mixin('classification_head', MLPHeadMixin(args.hidden_size, 2048, 1))
+        self.add_mixin('prefix-tuning', PrefixTuningMixin(args.num_layers, args.hidden_size // args.num_attention_heads, args.num_attention_heads, args.prefix_len))
     def disable_untrainable_params(self):
         self.transformer.word_embeddings.requires_grad_(False)
         # for layer_id in range(len(self.transformer.layers)):
         #     self.transformer.layers[layer_id].requires_grad_(False)
-
-
+    
 def get_batch(data_iterator, args, timers):
     # Items and their type.
     keys = ['sentence', 'label']
@@ -59,21 +54,18 @@ def get_batch(data_iterator, args, timers):
     tokens = data_b['sentence'].long()
     labels = data_b['label'].long()
     batch_size, seq_length = tokens.size()
-
-    position_ids = torch.zeros(
-        2, seq_length, device=tokens.device, dtype=torch.long)
+    
+    position_ids = torch.zeros(2, seq_length, device=tokens.device, dtype=torch.long)
     torch.arange(0, seq_length, out=position_ids[0, :seq_length])
     position_ids = position_ids.unsqueeze(0)
+    
+    attention_mask = torch.ones((batch_size, 1, seq_length, seq_length), device=tokens.device)
 
-    attention_mask = torch.ones(
-        (batch_size, 1, seq_length, seq_length), device=tokens.device)
-
-    attention_mask[..., :seq_length] -= (tokens == -
-                                         1).view(batch_size, 1, 1, seq_length).float()
+    attention_mask[...,:seq_length] -= (tokens==-1).view(batch_size, 1, 1, seq_length).float()
     # Convert
     if args.fp16:
         attention_mask = attention_mask.half()
-    return tokens, labels, attention_mask, position_ids, (tokens != -1)
+    return tokens, labels, attention_mask, position_ids, (tokens!=-1)
 
 
 def forward_step(data_iterator, model, args, timers):
@@ -86,23 +78,19 @@ def forward_step(data_iterator, model, args, timers):
     timers('batch generator').stop()
 
     logits, *mems = model(tokens, position_ids, attention_mask)
-    pred = ((logits.contiguous().float().squeeze(-1)) *
-            loss_mask).sum(dim=-1) / loss_mask.sum(dim=-1)
+    pred = ((logits.contiguous().float().squeeze(-1)) * loss_mask).sum(dim=-1) / loss_mask.sum(dim=-1)
     loss = torch.nn.functional.binary_cross_entropy_with_logits(
-        pred,
+        pred, 
         labels.float()
-    )
+        )
     acc = ((pred > 0.).long() == labels).sum() / labels.numel()
     return loss, {'acc': acc}
 
-
 def create_dataset_function(path, args):
     tokenizer = get_tokenizer()
-
     def process_fn(row):
         sentence, label = tokenizer._encode(row[0]), int(row[1])
-        sentence = [tokenizer.get_command(
-            'ENC').Id] + sentence + [tokenizer.get_command('eos').Id]
+        sentence = [tokenizer.get_command('ENC').Id] + sentence + [tokenizer.get_command('eos').Id]
         if len(sentence) >= args.sample_length:
             sentence = sentence[:args.sample_length]
         else:
@@ -110,13 +98,15 @@ def create_dataset_function(path, args):
         return {'sentence': np.array(sentence, dtype=np.int64), 'label': label}
     return TSVDataset(path, process_fn, with_heads=True)
 
-
-if __name__ == '__main__':
-    model, args = AutoModel.from_pretrained(args, 'glm-10b-chinese')
-    model.add_mixin('auto-regressive', CachedAutoregressiveMixin())
-    # Generate a sequence with beam search
-    from SwissArmyTransformer.generation.autoregressive_sampling import filling_sequence
-    from SwissArmyTransformer.generation.sampling_strategies import BeamSearchStrategy
-    output, *mems = filling_sequence(model, input_seq,
-                                     batch_size=args.batch_size,
-                                     strategy=BeamSearchStrategy(args.batch_size))
+if __name__ == '__main__':    
+    py_parser = argparse.ArgumentParser(add_help=False)
+    py_parser.add_argument('--new_hyperparam', type=str, default=None)
+    py_parser.add_argument('--sample_length', type=int, default=80)
+    py_parser.add_argument('--prefix_len', type=int, default=16)
+    GLMModel.add_model_specific_args(py_parser)
+    known, args_list = py_parser.parse_known_args()
+    args = get_args(args_list)
+    args = argparse.Namespace(**vars(args), **vars(known))
+    # from cogdata.utils.ice_tokenizer import get_tokenizer as get_ice
+    # tokenizer = get_tokenizer(args=args, outer_tokenizer=get_ice())
+    training_main(args, model_cls=ClassificationModel, forward_step_function=forward_step, create_dataset_function=create_dataset_function)

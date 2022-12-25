@@ -4,7 +4,7 @@
 CHECKPOINT_PATH=/dataset/fd5061f6/sat_pretrained/glm
 
 NUM_WORKERS=1
-NUM_GPUS_PER_WORKER=8
+NUM_GPUS_PER_WORKER=1
 MP_SIZE=1
 
 script_path=$(realpath $0)

@@ -7,4 +7,4 @@ MODEL_ARGS="--block-lm \
             --max-sequence-length 513 \
             --tokenizer-type glm_GPT2BPETokenizer \
             --tokenizer-model-type glm-large \
-            --load ${CHECKPOINT_PATH}/glm-large-en-blank"
+            --load ${CHECKPOINT_PATH}/glm-large"

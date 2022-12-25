@@ -340,7 +340,7 @@ def get_args(args_list=None):
             print('Automatically set fp16=True to use ZeRO.')     
         args.fp16 = True
         args.bf16 = False
-
+    print("ARGS:", args)
     if args.deepspeed:
         if args.checkpoint_activations:
             args.deepspeed_activation_checkpointing = True
@@ -417,18 +417,36 @@ def initialize_distributed(args):
     args.master_ip = os.getenv('MASTER_ADDR', 'localhost')
     args.master_port = os.getenv('MASTER_PORT', '6000')
     init_method += args.master_ip + ':' + args.master_port
-    torch.distributed.init_process_group(
-        backend=args.distributed_backend,
-        world_size=args.world_size, rank=args.rank,
-        init_method=init_method)
+    # torch.distributed.init_process_group(
+    #     backend=args.distributed_backend,
+    #     world_size=args.world_size, rank=args.rank,
+    #     init_method=init_method)
+
+    # # Set the model-parallel / data-parallel communicators.
+    # mpu.initialize_model_parallel(args.model_parallel_size)
+
+    # # Optional DeepSpeed Activation Checkpointing Features
+    # if args.deepspeed: 
+    #     # It seems that it has no negative influence to configure it even without using checkpointing.  
+    #     deepspeed.checkpointing.configure(mpu, deepspeed_config=args.deepspeed_config, num_checkpoints=args.num_layers)
+
+    deepspeed.init_distributed(dist_backend='nccl')
+    # try:
+    #     torch.distributed.init_process_group(
+    #     backend=args.distributed_backend,
+    #     world_size=args.world_size, rank=args.rank,
+    #     init_method=init_method)
+    # except:
+    #     print("BADDDDDDDD")
+
 
     # Set the model-parallel / data-parallel communicators.
     mpu.initialize_model_parallel(args.model_parallel_size)
 
-    # Optional DeepSpeed Activation Checkpointing Features
-    if args.deepspeed: 
+    # # Optional DeepSpeed Activation Checkpointing Features
+    # if args.deepspeed: 
         # It seems that it has no negative influence to configure it even without using checkpointing.  
-        deepspeed.checkpointing.configure(mpu, deepspeed_config=args.deepspeed_config, num_checkpoints=args.num_layers)
+    deepspeed.checkpointing.configure(mpu, deepspeed_config=args.deepspeed_config, num_checkpoints=args.num_layers)
 
 def set_random_seed(seed):
     """Set random seed for reproducability."""

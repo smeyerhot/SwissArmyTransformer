@@ -1,5 +1,5 @@
 #!/bin/bash
-CHECKPOINT_PATH=/home/tsm/.sat_models/glm-large-en-blank
+CHECKPOINT_PATH=/home/tsm/.sat_models/glm-large-en
 # MODEL_TYPE="blocklm-roberta-large"
 # MODEL_ARGS="--block-lm \
 #             --cloze-eval \
@@ -17,7 +17,7 @@ MASTER_PORT=$(shuf -n 1 -i 10000-65535)
 #SAMPLING ARGS
 TEMP=0.9
 #If TOPK/TOPP are 0 it defaults to greedy sampling, top-k will also override top-p
-TOPK=0
+TOPK=40
 TOPP=0
 
 script_path=$(realpath $0)
@@ -36,6 +36,5 @@ python -m torch.distributed.launch --nproc_per_node=$MPSIZE --master_port $MASTE
        --top_k $TOPK \
        --output-path samples_glm \
        --batch-size 1 \
-       --out-seq-length 20 \
-       --input-source ./input.txt \
+       --out-seq-length 200 \
        --sampling-strategy BeamSearchStrategy
