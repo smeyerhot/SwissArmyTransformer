@@ -340,7 +340,7 @@ def get_args(args_list=None):
             print('Automatically set fp16=True to use ZeRO.')     
         args.fp16 = True
         args.bf16 = False
-    print("ARGS:", args)
+
     if args.deepspeed:
         if args.checkpoint_activations:
             args.deepspeed_activation_checkpointing = True

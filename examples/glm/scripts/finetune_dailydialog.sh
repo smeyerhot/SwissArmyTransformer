@@ -12,7 +12,7 @@ MODEL_ARGS="--block-lm \
             --max-sequence-length 1025 \
             --tokenizer-model-type gpt2 \
             --tokenizer-type glm_GPT2BPETokenizer \
-            --load ${CHECKPOINT_PATH}/glm-10b-en"
+            --load ${CHECKPOINT_PATH}"
 NUM_WORKERS=1
 NUM_GPUS_PER_WORKER=1
 MP_SIZE=1
@@ -21,9 +21,8 @@ script_dir=$(dirname $script_path)
 main_dir=$(dirname $script_dir)
 
 echo "main dir $main_dir"
-source $main_dir/config/model_glm_10B.sh
+# source $main_dir/config/model_glm_10B.sh
 
-echo "$MODEL_ARGS"
 OPTIONS_NCCL="NCCL_DEBUG=info NCCL_IB_DISABLE=0 NCCL_NET_GDR_LEVEL=2"
 HOST_FILE_PATH="hostfile"
 HOST_FILE_PATH="hostfile_single"

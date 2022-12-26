@@ -82,19 +82,18 @@ def create_dataset_function(path, args):
     tokenizer = get_tokenizer(args)
 
     def process_fn(row):
-        sentence1, sentence2, label = tokenizer._encode(
-            row['passage']), tokenizer._encode(row['question']), int(row['label'])
-        sentence1 = sentence1 + [tokenizer.get_command('eos').Id]
-        sentence2 = [tokenizer.get_command(
-            'ENC').Id] + sentence2 + [tokenizer.get_command('eos').Id]
-        if len(sentence1) + len(sentence2) >= args.sample_length:
-            sentence = sentence2 + \
-                sentence1[:args.sample_length - len(sentence2)]
+        dialog = row['dialog']
+        text = '\n'.join(dialog)
+                   
+        sentence = tokenizer._encode(text[1:])
+        sentence = sentence + [tokenizer.get_command('eos').Id]
+        if len(sentence) >= args.sample_length:
+            sentence = sentence[args.sample_length - len(sentence):]
         else:
-            sentence = sentence2 + sentence1
+    
             sentence.extend([-1] * (args.sample_length-len(sentence)))
-        return {'sentence': np.array(sentence, dtype=np.int64), 'label': label}
-    return load_hf_dataset(path, process_fn, columns= ["sentence", "label"], cache_dir='~/dataset/hf/SwissArmyTransformerDatasets', offline=False)
+        return {'dialog': np.array(sentence, dtype=np.int64)}
+    return load_hf_dataset(path, process_fn, columns=['dialog'], offline=False)
 
 if __name__ == '__main__':    
     py_parser = argparse.ArgumentParser(add_help=False)
@@ -105,6 +104,4 @@ if __name__ == '__main__':
     known, args_list = py_parser.parse_known_args()
     args = get_args(args_list)
     args = argparse.Namespace(**vars(args), **vars(known))
-    # from cogdata.utils.ice_tokenizer import get_tokenizer as get_ice
-    # tokenizer = get_tokenizer(args=args, outer_tokenizer=get_ice())
     training_main(args, model_cls=AutoregressiveModel, forward_step_function=forward_step, create_dataset_function=create_dataset_function)
