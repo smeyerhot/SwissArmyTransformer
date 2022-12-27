@@ -88,7 +88,6 @@ def make_dataset_full(path, split, args, create_dataset_function,
         dataset_weights=None, random_mapping=True, is_train_data=False, **kwargs):
     """function to create datasets+tokenizers for common options"""
     print('make dataset ...', path)
-    print("make_dataset_full", args)
     assert isinstance(path, list)
 
     if args.iterable_dataset: # cannot indexed

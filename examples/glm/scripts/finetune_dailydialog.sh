@@ -1,18 +1,7 @@
 #! /bin/bash
 
 # Change for multinode config
-CHECKPOINT_PATH=/home/tsm/.sat_models/glm-10b-en
-MODEL_TYPE="blocklm-10B"
-MODEL_ARGS="--block-lm \
-            --cloze-eval \
-            --task-mask \
-            --num-layers 48 \
-            --hidden-size 4096 \
-            --num-attention-heads 64 \
-            --max-sequence-length 1025 \
-            --tokenizer-model-type gpt2 \
-            --tokenizer-type glm_GPT2BPETokenizer \
-            --load ${CHECKPOINT_PATH}"
+CHECKPOINT_PATH=/home/tsm/.sat_models
 NUM_WORKERS=1
 NUM_GPUS_PER_WORKER=1
 MP_SIZE=1
@@ -21,7 +10,7 @@ script_dir=$(dirname $script_path)
 main_dir=$(dirname $script_dir)
 
 echo "main dir $main_dir"
-# source $main_dir/config/model_glm_10B.sh
+source $main_dir/config/model_glm_10B.sh
 
 OPTIONS_NCCL="NCCL_DEBUG=info NCCL_IB_DISABLE=0 NCCL_NET_GDR_LEVEL=2"
 HOST_FILE_PATH="hostfile"

@@ -446,7 +446,7 @@ def initialize_distributed(args):
     # # Optional DeepSpeed Activation Checkpointing Features
     # if args.deepspeed: 
         # It seems that it has no negative influence to configure it even without using checkpointing.  
-    deepspeed.checkpointing.configure(mpu, deepspeed_config=args.deepspeed_config, num_checkpoints=args.num_layers)
+    # deepspeed.checkpointing.configure(mpu, deepspeed_config=args.deepspeed_config, num_checkpoints=args.num_layers)
 
 def set_random_seed(seed):
     """Set random seed for reproducability."""

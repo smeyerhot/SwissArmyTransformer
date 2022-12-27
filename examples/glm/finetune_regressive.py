@@ -22,14 +22,20 @@ from SwissArmyTransformer.model.mixins import MLPHeadMixin, PrefixTuningMixin, C
 class AutoregressiveModel(GLMModel):
     def __init__(self, args, transformer=None, parallel_output=True):
         super().__init__(args, transformer=transformer, parallel_output=parallel_output)
-        self.add_mixin('auto-regressive', CachedAutoregressiveMixin())
-        self.add_mixin('classification_head', MLPHeadMixin(args.hidden_size, 2048, 1))
+        # self.add_mixin('auto-regressive', CachedAutoregressiveMixin())
+        self.add_mixin('classification_head', MLPHeadMixin(args.hidden_size, 4096, 1))
+        print(args.num_layers)
+        print(args.hidden_size)
+        print(args.num_attention_heads)
+        print(args.prefix_len)
         self.add_mixin('prefix-tuning', PrefixTuningMixin(args.num_layers, args.hidden_size // args.num_attention_heads, args.num_attention_heads, args.prefix_len))
     def disable_untrainable_params(self):
         self.transformer.word_embeddings.requires_grad_(False)
         # for layer_id in range(len(self.transformer.layers)):
         #     self.transformer.layers[layer_id].requires_grad_(False)
+
 def get_batch(data_iterator, args, timers):
+    print("data_b", data_b)
     # Items and their type.
     keys = ['sentence', 'label']
     datatype = torch.int64
@@ -92,8 +98,8 @@ def create_dataset_function(path, args):
         else:
     
             sentence.extend([-1] * (args.sample_length-len(sentence)))
-        return {'dialog': np.array(sentence, dtype=np.int64)}
-    return load_hf_dataset(path, process_fn, columns=['dialog'], offline=False)
+        return {'sentence': np.array(sentence, dtype=np.int64)}
+    return load_hf_dataset(path, process_fn, columns=['sentence'], offline=False)
 
 if __name__ == '__main__':    
     py_parser = argparse.ArgumentParser(add_help=False)
