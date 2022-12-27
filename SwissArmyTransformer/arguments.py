@@ -431,22 +431,14 @@ def initialize_distributed(args):
     #     deepspeed.checkpointing.configure(mpu, deepspeed_config=args.deepspeed_config, num_checkpoints=args.num_layers)
 
     deepspeed.init_distributed(dist_backend='nccl')
-    # try:
-    #     torch.distributed.init_process_group(
-    #     backend=args.distributed_backend,
-    #     world_size=args.world_size, rank=args.rank,
-    #     init_method=init_method)
-    # except:
-    #     print("BADDDDDDDD")
-
 
     # Set the model-parallel / data-parallel communicators.
     mpu.initialize_model_parallel(args.model_parallel_size)
 
     # # Optional DeepSpeed Activation Checkpointing Features
-    # if args.deepspeed: 
+    if args.deepspeed: 
         # It seems that it has no negative influence to configure it even without using checkpointing.  
-    # deepspeed.checkpointing.configure(mpu, deepspeed_config=args.deepspeed_config, num_checkpoints=args.num_layers)
+        deepspeed.checkpointing.configure(mpu, deepspeed_config=args.deepspeed_config, num_checkpoints=args.num_layers)
 
 def set_random_seed(seed):
     """Set random seed for reproducability."""

@@ -23,12 +23,16 @@ class AutoregressiveModel(GLMModel):
     def __init__(self, args, transformer=None, parallel_output=True):
         super().__init__(args, transformer=transformer, parallel_output=parallel_output)
         # self.add_mixin('auto-regressive', CachedAutoregressiveMixin())
-        self.add_mixin('classification_head', MLPHeadMixin(args.hidden_size, 4096, 1))
+        self.add_mixin('classification_head', MLPHeadMixin(args.hidden_size, 1024, 1))
         print(args.num_layers)
         print(args.hidden_size)
         print(args.num_attention_heads)
         print(args.prefix_len)
         self.add_mixin('prefix-tuning', PrefixTuningMixin(args.num_layers, args.hidden_size // args.num_attention_heads, args.num_attention_heads, args.prefix_len))
+        print(args.num_layers)
+        print(args.hidden_size)
+        print(args.num_attention_heads)
+        print(args.prefix_len)
 
     def disable_untrainable_params(self):
         self.transformer.word_embeddings.requires_grad_(False)
@@ -37,7 +41,7 @@ class AutoregressiveModel(GLMModel):
 
 def get_batch(data_iterator, args, timers):
     # Items and their type.
-    keys = ['sentence']
+    keys = ['sentence', 'label']
     datatype = torch.int64
 
     # Broadcast data.
@@ -46,13 +50,12 @@ def get_batch(data_iterator, args, timers):
         data = next(data_iterator)
     else:
         data = None
-    print(data)
     timers('data loader').stop()
     data_b = mpu.broadcast_data(keys, data, datatype)
     print("data_b", data_b)
     # Unpack.
     tokens = data_b['sentence'].long()
-    labels = data_b['sentence'].long()
+    labels = data_b['label'].long()
     batch_size, seq_length = tokens.size()
     
     position_ids = torch.zeros(2, seq_length, device=tokens.device, dtype=torch.long)
@@ -91,13 +94,14 @@ def create_dataset_function(path, args):
 
     def process_fn(row):
         dialog = row['dialog']
-        text = '\n'.join(dialog)  
+        text = '\n'.join(dialog)
+                   
         sentence = tokenizer._encode(text[1:])
         sentence = sentence + [tokenizer.get_command('eos').Id]
         if len(sentence) >= args.sample_length:
-            sentence = sentence[len(sentence) - args.sample_length:]
-            print(sentence)
+            sentence = sentence[args.sample_length - len(sentence):]
         else:
+    
             sentence.extend([-1] * (args.sample_length-len(sentence)))
         return {'sentence': np.array(sentence, dtype=np.int64)}
     return load_hf_dataset(path, process_fn, columns=['sentence'], offline=False)
@@ -105,7 +109,7 @@ def create_dataset_function(path, args):
 if __name__ == '__main__':    
     py_parser = argparse.ArgumentParser(add_help=False)
     py_parser.add_argument('--new_hyperparam', type=str, default=None)
-    py_parser.add_argument('--sample_length', type=int, default=1024-16)
+    py_parser.add_argument('--sample_length', type=int, default=80)
     py_parser.add_argument('--prefix_len', type=int, default=16)
     GLMModel.add_model_specific_args(py_parser)
     known, args_list = py_parser.parse_known_args()

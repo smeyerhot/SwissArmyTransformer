@@ -1,15 +1,6 @@
 #!/bin/bash
-CHECKPOINT_PATH=/home/tsm/.sat_models/glm-large-en
-# MODEL_TYPE="blocklm-roberta-large"
-# MODEL_ARGS="--block-lm \
-#             --cloze-eval \
-#             --num-layers 24 \
-#             --hidden-size 1024 \
-#             --num-attention-heads 16 \
-#             --max-sequence-length 513 \
-#             --tokenizer-model-type roberta \
-#             --tokenizer-type glm_GPT2BPETokenizer \
-#             --load ${CHECKPOINT_PATH}/glm-large-en-blank"
+CHECKPOINT_PATH=/home/tsm/.sat_models
+
 MPSIZE=1
 MAXSEQLEN=512
 MASTER_PORT=$(shuf -n 1 -i 10000-65535)
@@ -22,6 +13,11 @@ TOPP=0
 
 script_path=$(realpath $0)
 script_dir=$(dirname $script_path)
+# main_dir=$(dirname $script_dir)
+
+# echo "main dir $main_dir"
+# source $main_dir/config/model_glm_10B.sh
+
 
 python -m torch.distributed.launch --nproc_per_node=$MPSIZE --master_port $MASTER_PORT inference_glm.py \
        --mode inference \

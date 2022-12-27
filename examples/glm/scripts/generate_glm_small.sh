@@ -1,6 +1,5 @@
 #!/bin/bash
-#CHECKPOINT_PATH=/dataset/fd5061f6/sat_pretrained/glm
-
+CHECKPOINT_PATH=/home/tsm/.sat_models
 MPSIZE=1
 MAXSEQLEN=512
 MASTER_PORT=$(shuf -n 1 -i 10000-65535)
@@ -13,8 +12,12 @@ TOPP=0
 
 script_path=$(realpath $0)
 script_dir=$(dirname $script_path)
+# main_dir=$(dirname $script_dir)
 
-python -m torch.distributed.launch --nproc_per_node=$MPSIZE --master_port $MASTER_PORT inference_glm.py \
+# echo "main dir $main_dir"
+# source $main_dir/config/model_glm_large.sh
+
+python -m torch.distributed.launch --nproc_per_node=$MPSIZE --master_port $MASTER_PORT inference_glm_small.py \
        --mode inference \
        --model-parallel-size $MPSIZE \
        $MODEL_ARGS \
@@ -26,6 +29,6 @@ python -m torch.distributed.launch --nproc_per_node=$MPSIZE --master_port $MASTE
        --temperature $TEMP \
        --top_k $TOPK \
        --output-path samples_glm \
-       --batch-size 3 \
+       --batch-size 1 \
        --out-seq-length 200 \
        --sampling-strategy BeamSearchStrategy
