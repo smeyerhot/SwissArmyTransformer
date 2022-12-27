@@ -1,5 +1,5 @@
 prefix_len=10
-max_seq_len=512
+max_seq_len=513
 sample_len="$((max_seq_len-prefix_len-1))"
 MODEL_TYPE="blocklm-large"
 MODEL_ARGS="--block-lm \
@@ -10,6 +10,7 @@ MODEL_ARGS="--block-lm \
             --max-sequence-length $max_seq_len \
             --num-layers 24 \
             --hidden-size 1024 \
+            --vocab-size 50304 \
             --num-attention-heads 16 \
             --tokenizer-type glm_GPT2BPETokenizer \
             --tokenizer-model-type gpt2 \
