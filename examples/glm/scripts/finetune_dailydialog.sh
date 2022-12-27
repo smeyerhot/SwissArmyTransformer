@@ -25,7 +25,7 @@ gpt_options=" \
        --experiment-name finetune-glm \
        --model-parallel-size ${MP_SIZE} \
        --mode finetune \
-       --train-iters 6000 \
+       --train-iters 600 \
        --resume-dataloader \
        $MODEL_ARGS \
        --train-data ${en_data} \
@@ -34,7 +34,7 @@ gpt_options=" \
        --warmup .02 \
        --checkpoint-activations \
        --fp16 \
-       --save-interval 6000 \
+       --save-interval 600 \
        --eval-interval 100 \
        --save /root/checkpoints \
        --split 1 \

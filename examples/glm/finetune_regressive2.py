@@ -5,7 +5,6 @@ import os
 import sys
 import math
 import random
-import gc 
 
 from SwissArmyTransformer.data_utils.datasets import TSVDataset
 import torch
@@ -30,26 +29,9 @@ class AutoregressiveModel(GLMModel):
         for layer_id in range(len(self.transformer.layers)):
             self.transformer.layers[layer_id].requires_grad_(False)
 
-def get_masks(data, loss_mask=None, attention_mask=None, args=None):
-    # Extract batch size and sequence length.
-    batch_size, seq_length = data.size()
-
-    # Attention mask (lower triangular).
-    if attention_mask is None:
-        attention_mask = torch.ones((batch_size, seq_length, seq_length), device=data.device)
-        attention_mask.tril_()
-        attention_mask.unsqueeze_(1)
-        
-    # Loss mask.
-    if loss_mask is None:
-        loss_mask = torch.ones(data.size(), dtype=data.dtype, device=data.device)
-
-    return attention_mask, loss_mask
-
-
 def get_batch(data_iterator, args, timers):
     # Items and their type.
-    keys = ['text', 'loss_mask']
+    keys = ['sentence', 'label']
     datatype = torch.int64
 
     # Broadcast data.
@@ -58,57 +40,46 @@ def get_batch(data_iterator, args, timers):
         data = next(data_iterator)
     else:
         data = None
+    print(data)
     timers('data loader').stop()
-
     data_b = mpu.broadcast_data(keys, data, datatype)
-    # Unpack.
-    tokens_ = data_b['text'].long()
-    loss_mask = data_b['loss_mask'].float()
     
-    labels = tokens_[:, 1:].contiguous()
-    loss_mask = loss_mask[:, 1:].contiguous()
-    tokens = tokens_[:, :-1].contiguous()
+    # Unpack.
+    tokens = data_b['sentence'].long()
+    labels = data_b['label'].long()
     batch_size, seq_length = tokens.size()
-
-    position_ids = torch.zeros(2, seq_length, device=tokens.device, dtype=torch.long)
+    print("batch,seq")
+    print(batch_size)
+    print(seq_length)
+    position_ids = torch.zeros(50304, seq_length, device=tokens.device, dtype=torch.long)
     torch.arange(0, seq_length, out=position_ids[0, :seq_length])
     position_ids = position_ids.unsqueeze(0)
+    
+    attention_mask = torch.ones((batch_size, 1, seq_length, seq_length), device=tokens.device)
 
-    attention_mask = None        
-
-    # Get the masks and postition ids.
-    attention_mask, loss_mask = get_masks(
-        tokens,
-        loss_mask=loss_mask,
-        attention_mask=attention_mask,
-        args=args
-        )
+    attention_mask[...,:seq_length] -= (tokens==-1).view(batch_size, 1, 1, seq_length).float()
     # Convert
     if args.fp16:
         attention_mask = attention_mask.half()
-
-    return tokens, labels, loss_mask, attention_mask, position_ids 
-
+    return tokens, labels, attention_mask, position_ids, (tokens!=-1)
 
 def forward_step(data_iterator, model, args, timers):
     """Forward step."""
 
     # Get the batch.
     timers('batch generator').start()
-    tokens, labels, loss_mask, attention_mask, position_ids = get_batch(
+    tokens, labels, attention_mask, position_ids, loss_mask = get_batch(
         data_iterator, args, timers)
     timers('batch generator').stop()
-    # Forward model.
-    print(tokens.shape)
-    print(position_ids.shape)
-    logits, *mems = model(tokens, position_ids, attention_mask)
-    losses = mpu.vocab_parallel_cross_entropy(logits.contiguous().float(), labels)
-    # scaling loss mask
-    loss_mask = loss_mask.view(-1)  
 
-    losses = losses.view(-1) * loss_mask
-    loss = torch.sum(losses) / loss_mask.sum()
-    return loss, {}
+    logits, *mems = model(tokens, position_ids, attention_mask)
+    pred = ((logits.contiguous().float().squeeze(-1)) * loss_mask).sum(dim=-1) / loss_mask.sum(dim=-1)
+    loss = torch.nn.functional.cross_entropy_with_logits(
+        pred, 
+        labels.float()
+        )
+    acc = ((pred > 0.).long() == labels).sum() / labels.numel()
+    return loss, {'acc': acc}
 
 def create_dataset_function(path, args):
     tokenizer = get_tokenizer(args)
@@ -131,9 +102,7 @@ def create_dataset_function(path, args):
         return {'text': np.array(sentence, dtype=np.int64), 'loss_mask': np.array(loss_mask, dtype=np.int64)}
     return load_hf_dataset(path, process_fn, columns=['text', 'loss_mask'], cache_dir='~/dataset/SwissArmyTransformerDatasets', offline=False)
 
-if __name__ == '__main__':   
-    torch.cuda.empty_cache()
-    gc.collect()
+if __name__ == '__main__':    
     py_parser = argparse.ArgumentParser(add_help=False)
     py_parser.add_argument('--new_hyperparam', type=str, default=None)
     py_parser.add_argument('--sample_length', type=int, default=1024-16)
