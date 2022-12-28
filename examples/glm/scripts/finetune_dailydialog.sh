@@ -20,12 +20,12 @@ en_data="hf://daily_dialog/default/train"
 eval_data="daily_dialog/default/validation"
 test_data="daily_dialog/default/test"
 
-config_json="$script_dir/ds_config_ft.json"
+config_json="$script_dir/ds_config_ft_3b.json"
 gpt_options=" \
        --experiment-name finetune-glm \
        --model-parallel-size ${MP_SIZE} \
        --mode finetune \
-       --train-iters 600 \
+       --train-iters 6000 \
        --resume-dataloader \
        $MODEL_ARGS \
        --train-data ${en_data} \
@@ -34,9 +34,9 @@ gpt_options=" \
        --warmup .02 \
        --checkpoint-activations \
        --fp16 \
-       --save-interval 600 \
+       --save-interval 6000 \
        --eval-interval 100 \
-       --save /root/checkpoints \
+       --save ~/checkpoints \
        --split 1 \
        --strict-eval \
        --eval-batch-size 1
@@ -52,7 +52,7 @@ gpt_options="${gpt_options}
        --deepspeed_config ${config_json} \
 "
 
-run_cmd="${OPTIONS_NCCL} deepspeed --num_nodes 1 --num_gpus 1 --hostfile ${HOST_FILE_PATH} finetune_regressive.py $@ ${gpt_options}"
+run_cmd="${OPTIONS_NCCL} deepspeed --num_nodes 1 --num_gpus 1 --hostfile ${HOST_FILE_PATH} finetune_glm_causal.py $@ ${gpt_options}"
 echo ${run_cmd}
 eval ${run_cmd}
 

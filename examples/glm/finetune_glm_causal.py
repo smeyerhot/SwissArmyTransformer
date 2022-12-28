@@ -99,8 +99,8 @@ def forward_step(data_iterator, model, args, timers):
         data_iterator, args, timers)
     timers('batch generator').stop()
     # Forward model.
-    print(tokens.shape)
-    print(position_ids.shape)
+    # print(tokens.shape)
+    # print(position_ids.shape)
     logits, *mems = model(tokens, position_ids, attention_mask)
     losses = mpu.vocab_parallel_cross_entropy(logits.contiguous().float(), labels)
     # scaling loss mask
@@ -132,8 +132,6 @@ def create_dataset_function(path, args):
     return load_hf_dataset(path, process_fn, columns=['text', 'loss_mask'], cache_dir='~/dataset/SwissArmyTransformerDatasets', offline=False)
 
 if __name__ == '__main__':   
-    torch.cuda.empty_cache()
-    gc.collect()
     py_parser = argparse.ArgumentParser(add_help=False)
     py_parser.add_argument('--new_hyperparam', type=str, default=None)
     py_parser.add_argument('--sample_length', type=int, default=1024-16)

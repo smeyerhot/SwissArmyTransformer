@@ -99,8 +99,8 @@ def forward_step(data_iterator, model, args, timers):
         data_iterator, args, timers)
     timers('batch generator').stop()
     # Forward model.
-    print(tokens.shape)
-    print(position_ids.shape)
+    # print(tokens.shape)
+    # print(position_ids.shape)
     logits, *mems = model(tokens, position_ids, attention_mask)
     losses = mpu.vocab_parallel_cross_entropy(logits.contiguous().float(), labels)
     # scaling loss mask

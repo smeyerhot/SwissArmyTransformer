@@ -25,7 +25,7 @@ gpt_options=" \
        --experiment-name finetune-glm \
        --model-parallel-size ${MP_SIZE} \
        --mode finetune \
-       --train-iters 6000 \
+       --train-iters 21 \
        --resume-dataloader \
        $MODEL_ARGS \
        --train-data ${en_data} \
@@ -34,15 +34,14 @@ gpt_options=" \
        --warmup .02 \
        --checkpoint-activations \
        --fp16 \
-       --save-interval 6000 \
-       --eval-interval 100 \
-       --save /root/checkpoints \
+       --save-interval 21 \
+       --eval-interval 10 \
+       --save ~/checkpoints \
        --split 1 \
        --strict-eval \
-       --eval-batch-size 1
+       --eval-batch-size 1 \
+       --load ~/checkpoints/finetune-glm-12-27-23-56
 "
-       # --load  /root/checkpoints/pretrain-bert-mid-std-fulltrain12-02-06-10
-       #  \       --sandwich-ln
        # --split 949,50,1 \
        # --load /root/checkpoints/pretrain-bert-mid11-28-15-38 \
 
@@ -52,7 +51,7 @@ gpt_options="${gpt_options}
        --deepspeed_config ${config_json} \
 "
 
-run_cmd="${OPTIONS_NCCL} deepspeed --num_nodes 1 --num_gpus 1 --hostfile ${HOST_FILE_PATH} finetune_reg_small.py $@ ${gpt_options}"
+run_cmd="${OPTIONS_NCCL} deepspeed --num_nodes 1 --num_gpus 1 --hostfile ${HOST_FILE_PATH} finetune_glm_causal.py $@ ${gpt_options}"
 echo ${run_cmd}
 eval ${run_cmd}
 
