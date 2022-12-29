@@ -1,24 +1,12 @@
-
-# here put the import lib
-from SwissArmyTransformer.data_utils import load_hf_dataset
-import os
-import sys
-import math
-import random
-import gc 
-
-from SwissArmyTransformer.data_utils.datasets import TSVDataset
 import torch
 import argparse
 import numpy as np
 
+from SwissArmyTransformer.data_utils import load_hf_dataset
 from SwissArmyTransformer import mpu, get_args, get_tokenizer
-from SwissArmyTransformer.model.base_model import BaseModel, BaseMixin, non_conflict
 from SwissArmyTransformer.training.deepspeed_training import training_main
-from SwissArmyTransformer.data_utils import TSVDataset
 from SwissArmyTransformer.model import GLMModel
-from SwissArmyTransformer.model.transformer import standard_attention
-from SwissArmyTransformer.model.mixins import MLPHeadMixin, PrefixTuningMixin, CachedAutoregressiveMixin
+from SwissArmyTransformer.model.mixins import PrefixTuningMixin 
 
 class RegressiveModel(GLMModel):
     def __init__(self, args, transformer=None, parallel_output=True):

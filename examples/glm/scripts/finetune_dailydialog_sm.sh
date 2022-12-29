@@ -40,8 +40,9 @@ gpt_options=" \
        --split 1 \
        --strict-eval \
        --eval-batch-size 1 \
-       --load ~/checkpoints/finetune-glm-12-27-23-56
+       --load ~/checkpoints/ 
 "
+       # --load /root/checkpoints/finetune-glm-12-27-23-56
        # --split 949,50,1 \
        # --load /root/checkpoints/pretrain-bert-mid11-28-15-38 \
 
